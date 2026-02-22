@@ -1,345 +1,505 @@
-import streamlit as st
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Dict, List
+
+import numpy as np
 import pandas as pd
-
-# -----------------------------
-# CONFIG (siempre primero)
-# -----------------------------
-st.set_page_config(page_title="Proyecto Python Fundamentals", page_icon="✅", layout="wide")
+import streamlit as st
 
 
-# -----------------------------
-# TEMA DE LA PAGINA
-# -----------------------------
-def apply_custom_css() -> None:
-    css = """
-    <style>
-        /* App background */
-        .stApp {
-            background: linear-gradient(120deg, #FFFFFF 0%, #EEF3FB 60%, #FFFFFF 100%);
-            color: #1B2430;
+# -----------------------------------------------------------------------------
+# Configuración de página
+# -----------------------------------------------------------------------------
+st.set_page_config(
+    page_title="Proyecto Python Fundamentals",
+    page_icon="🧩",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
+
+
+# -----------------------------------------------------------------------------
+# Estilos (CSS)
+# -----------------------------------------------------------------------------
+def apply_theme() -> None:
+    """Aplica estilos CSS (forma, color y consistencia visual)."""
+    st.markdown(
+        """
+        <style>
+        :root{
+            --bg1:#ffffff;
+            --bg2:#eef3fb;
+            --ink:#0f172a;
+            --muted:#475569;
+            --card:#ffffff;
+            --line:#e2e8f0;
+            --accent:#2563eb;
+            --accent2:#1d4ed8;
+            --ok:#16a34a;
+            --warn:#f59e0b;
+            --bad:#dc2626;
+            --shadow: 0 10px 30px rgba(2, 6, 23, .08);
+            --radius: 18px;
+        }
+
+        /* Fondo general */
+        .stApp{
+            background: linear-gradient(120deg, var(--bg1) 0%, var(--bg2) 60%, var(--bg1) 100%);
+            color: var(--ink);
+            font-family: "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+        }
+
+        /* Contenedor principal */
+        .block-container{
+            padding-top: 2rem;
+            padding-bottom: 2rem;
+            max-width: 1200px;
         }
 
         /* Sidebar */
-        section[data-testid="stSidebar"] {
-            background-color: #171D2A;
-            border-right: 1px solid rgba(255,255,255,0.06);
+        section[data-testid="stSidebar"]{
+            background: linear-gradient(180deg, #0b1220 0%, #111c33 100%);
+            border-right: 1px solid rgba(255,255,255,.08);
         }
-        section[data-testid="stSidebar"] * {
-            color: #E8EEF9 !important;
+        section[data-testid="stSidebar"] *{
+            color: #ffffff !important;
         }
-
-        /* Hide Streamlit default footer/menu */
-        #MainMenu {visibility: hidden;}
-        footer {visibility: hidden;}
-        header {visibility: hidden;}
-
-        /* Containers */
-        .dmc-hero {
-            background: #F5F7FB;
-            border: 1px solid #DDE6F5;
-            border-radius: 18px;
-            padding: 22px 24px;
-            box-shadow: 0 10px 25px rgba(23, 29, 42, 0.08);
-        }
-        .dmc-card {
-            background: #F5F7FB;
-            border: 1px solid #DDE6F5;
-            border-radius: 16px;
-            padding: 16px 18px;
-            box-shadow: 0 8px 20px rgba(23, 29, 42, 0.06);
-        }
-        .dmc-muted {
-            color: #5B6777;
+        section[data-testid="stSidebar"] .stSelectbox label{
+            font-weight: 700;
         }
 
-        /* Buttons */
-        div.stButton > button {
-            border-radius: 12px;
-            border: 1px solid #DDE6F5;
-            padding: 0.55rem 0.9rem;
+        /* Títulos */
+        h1, h2, h3{
+            color: var(--ink);
         }
-        div.stButton > button:hover {
-            border-color: #249CEC;
-        }
-
-        /* Inputs */
-        div[data-baseweb="input"] > div {
-            border-radius: 12px !important;
-        }
-        div[data-baseweb="select"] > div {
-            border-radius: 12px !important;
+        .dmc-subtitle{
+            color: var(--muted);
+            margin-top: -.25rem;
+            margin-bottom: 1rem;
         }
 
-        /* Dataframe */
-        .stDataFrame {
+        /* Tarjetas */
+        .dmc-card{
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            padding: 18px 18px 14px 18px;
+            box-shadow: var(--shadow);
+        }
+        .dmc-card h3{
+            margin-top: 0;
+        }
+        .dmc-divider{
+            height: 10px;
+        }
+
+        /* Botones */
+        .stButton > button{
+            background: linear-gradient(90deg, var(--accent) 0%, var(--accent2) 100%);
+            color: #ffffff;
+            border: 0;
             border-radius: 14px;
-            overflow: hidden;
+            padding: .62rem 1.1rem;
+            font-weight: 700;
+            transition: transform .08s ease-in-out, filter .15s ease-in-out;
+        }
+        .stButton > button:hover{
+            transform: translateY(-1px);
+            filter: brightness(0.96);
         }
 
-        /* Tarjeta para TITULOS (opcional, estilo imagen) */
-        .title-card{
-            background-color: white;
-            padding: 16px;
-            border-radius: 15px;
-            border: 2px solid #e5e7eb;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.08);
-            text-align: center;
-            margin-bottom: 14px;
+        /* Inputs: asegurar texto oscuro y fondo blanco */
+        label{
+            color: var(--ink) !important;
+            font-weight: 650 !important;
         }
-        .title-card h1{
-            color: #111827 !important;
-            margin: 0;
-            font-weight: 800;
+        input, textarea{
+            color: var(--ink) !important;
+        }
+        div[data-baseweb="select"] *{
+            color: var(--ink) !important;
         }
 
-        /* Estilo tipo dmc-card para contenedores con borde (evita error removeChild) */
-        div[data-testid="stVerticalBlockBorderWrapper"]{
-            background: #F5F7FB;
-            border: 1px solid #DDE6F5 !important;
-            border-radius: 16px !important;
-            padding: 16px 18px !important;
-            box-shadow: 0 8px 20px rgba(23, 29, 42, 0.06) !important;
+        /* Alertas: texto oscuro para legibilidad */
+        div[data-testid="stAlert"] p{
+            color: var(--ink) !important;
         }
 
-    </style>
-    """
-    st.markdown(css, unsafe_allow_html=True)
+        /* DataFrame y métricas como tarjetas */
+        div[data-testid="stDataFrame"],
+        div[data-testid="metric-container"]{
+            background: var(--card) !important;
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            padding: 10px;
+            box-shadow: var(--shadow);
+        }
 
+        /* Expander */
+        div[data-testid="stExpander"]{
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+        }
 
-def title_card(text: str) -> None:
-    """Título con el mismo look de tu imagen (caja blanca + borde)."""
-    st.markdown(f"""
-        <div class="title-card">
-            <h1>{text}</h1>
-        </div>
-    """, unsafe_allow_html=True)
-
-
-# --------
-# HOME
-# --------
-def render_home() -> None:
-    title_card("📚 Proyecto Fundamentos de Programación 💻")
-
-    st.markdown(
-        """
-        <div class="dmc-hero">
-            <p class="dmc-muted" style="margin:0;">
-                Aplicación interactiva en Streamlit que integra conceptos de programación:
-                variables, estructuras de datos, control de flujo, funciones, programación funcional y Programación Orientada a Objetos.
-            </p>
-        </div>
+        /* Etiquetas tipo "chip" */
+        .dmc-chip{
+            display:inline-block;
+            padding: .25rem .55rem;
+            border-radius: 999px;
+            border: 1px solid var(--line);
+            color: var(--muted);
+            font-size: .86rem;
+            margin-right: .35rem;
+            margin-bottom: .35rem;
+        }
+        </style>
         """,
         unsafe_allow_html=True,
     )
 
-    st.write("")
-    c1, c2 = st.columns([1.25, 1])
 
-    with c1:
-        st.markdown("### Bienvenidos a la aplicación")
-        st.write("**📝 Realizado por:** _Jeancarlos Amaya Quispe_")
-        st.write("**📝 Módulo:** Python Fundamentals – Módulo 1")
-        st.write("**📝 Año:** 2026")
+def page_header(title: str, subtitle: str | None = None) -> None:
+    st.title(title)
+    if subtitle:
+        st.markdown(f"<div class='dmc-subtitle'>{subtitle}</div>", unsafe_allow_html=True)
 
-    with c2:
-        st.markdown("### Tecnologías utilizadas")
-        st.markdown(
-            """
-            <div class="dmc-hero">
-                <p class="dmc-muted" style="margin:0;">
-                    ✨ Python<br>
-                    ✨ Streamlit<br>
-                    ✨ Pandas
-                </p>
-            </div>
-            """,
-            unsafe_allow_html=True,
+
+def card_open(title: str | None = None) -> None:
+    st.markdown("<div class='dmc-card'>", unsafe_allow_html=True)
+    if title:
+        st.markdown(f"### {title}")
+
+
+def card_close() -> None:
+    st.markdown("</div>", unsafe_allow_html=True)
+
+
+# -----------------------------------------------------------------------------
+# Estados por módulo (independientes)
+# -----------------------------------------------------------------------------
+def ensure_state() -> None:
+    # Ejercicio 1
+    st.session_state.setdefault("e1_mes", "Enero")
+    st.session_state.setdefault("e1_presupuesto", 1000.0)
+    st.session_state.setdefault("e1_gasto", 650.0)
+
+    # Ejercicio 2
+    st.session_state.setdefault("e2_actividades", [])  # list[dict]
+
+    # Ejercicio 3
+    st.session_state.setdefault("e3_actividades", [])  # list[dict]
+
+    # Ejercicio 4
+    st.session_state.setdefault("e4_objetos", [])  # list[Actividad]
+
+
+# -----------------------------------------------------------------------------
+# Home
+# -----------------------------------------------------------------------------
+def render_home() -> None:
+    st.title("Proyecto Fundamentos de Programación")
+        
+    card_open()
+    col_a, col_b = st.columns([1.4, 1])
+
+    with col_a:
+        st.write("**Autor:** Jeancarlos Amaya Quispe")
+        st.write("**Módulo:** Especialización Python for Analytics – Módulo 1")
+        st.write("**Año:** 2026")
+        st.write(
+            "**Objetivo:** desarrollar una aplicación interactiva en Streamlit integrando variables, "
+            "estructuras de datos, control de flujo, funciones, programación funcional y POO."
         )
 
+    with col_b:
+        st.markdown("**Tecnologías utilizadas**")
+        st.info("✨ Python")
+        st.info("✨ Streamlit")
+        st.info("✨ NumPy")
+        st.info("✨ Pandas")
 
-# -----------------------------------------
-# EJERCICIO 1 – Variables y Condicionales
-# -----------------------------------------
+
+    card_close()
+
+# -----------------------------------------------------------------------------
+# Ejercicio 1 – Variables y Condicionales
+# -----------------------------------------------------------------------------
 def render_ejercicio_1() -> None:
-    title_card("📊 Ejercicio 1 – Variables y Condicionales")
+    page_header("📝 Ejercicio 1", "Verificador de presupuesto vs gasto")
 
-    st.write("Verificador de presupuesto: compara **presupuesto vs gasto**")
-    presupuesto = st.number_input("Presupuesto", min_value=0.0, value=100.0, step=10.0, key="e1_presupuesto")
-    gasto = st.number_input("Gasto", min_value=0.0, value=50.0, step=10.0, key="e1_gasto")
+    meses = [
+        "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+        "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+    ]
+    mes_index = meses.index(st.session_state["e1_mes"]) if st.session_state["e1_mes"] in meses else 0
 
-    if st.button("Evaluar presupuesto", key="e1_btn"):
-        diferencia = presupuesto - gasto
-        if gasto <= presupuesto:
-            st.success("✅ El gasto está dentro del presupuesto.")
-        else:
-            st.warning("⚠️ El gasto excede el presupuesto.")
-        st.write(f"**La diferencia es:** {diferencia:.2f}")
+    card_open("Sistema de Evaluación de Presupuesto Mensual")
+    col_a, col_b = st.columns([1, 1])
 
-
-# ------------------------------------
-# EJERCICIO 2 – Listas y Diccionarios
-# ------------------------------------
-def render_ejercicio_2() -> None:
-    title_card("📊 Ejercicio 2 – Listas y Diccionarios")
-    st.caption("Registro de actividades financieras en una lista de diccionarios")
-
-    if "e2_actividades" not in st.session_state:
-        st.session_state["e2_actividades"] = []
-
-    left, right = st.columns([1, 1.35])
-
-    with left:
-        with st.container(border=True):
-            e2_nombre = st.text_input("Nombre de la actividad", value="", key="e2_nombre")
-            e2_tipo = st.selectbox(
-                "Tipo",
-                options=["Ingreso", "Gasto", "Inversión", "Ahorro"],
-                index=2,
-                key="e2_tipo"
-            )
-            e2_presupuesto = st.number_input(
-                "Presupuesto (S/)",
-                min_value=0.0,
-                value=1000.0,
-                step=50.0,
-                key="e2_presupuesto"
-            )
-            e2_gasto_real = st.number_input(
-                "Gasto real (S/)",
-                min_value=0.0,
-                value=0.0,
-                step=50.0,
-                key="e2_gasto_real"
-            )
-
-            add_e2 = st.button("Agregar actividad", key="e2_add")
-            clear_e2 = st.button("Limpiar lista", key="e2_clear")
-
-            if add_e2:
-                if not e2_nombre.strip():
-                    st.warning("Ingrese un **nombre** para la actividad.")
-                else:
-                    st.session_state["e2_actividades"].append({
-                        "nombre": e2_nombre.strip(),
-                        "tipo": e2_tipo,
-                        "presupuesto": float(e2_presupuesto),
-                        "gasto_real": float(e2_gasto_real),
-                    })
-                    st.success("Actividad agregada.")
-
-            if clear_e2:
-                st.session_state["e2_actividades"] = []
-                st.info("Lista limpiada.")
-
-    with right:
-        with st.container(border=True):
-            st.markdown("**Actividades registradas**")
-
-            actividades = st.session_state["e2_actividades"]
-            if not actividades:
-                st.info("No hay actividades registradas.")
-                return
-
-            df = pd.DataFrame(actividades)
-            st.dataframe(df, use_container_width=True, hide_index=True)
-
-            st.write("")
-            st.markdown("**Estado por actividad**")
-            for i, act in enumerate(actividades, start=1):
-                presupuesto = act["presupuesto"]
-                gasto_real = act["gasto_real"]
-                ok = gasto_real <= presupuesto
-                diff = presupuesto - gasto_real
-                estado = "En presupuesto" if ok else "EXCEDIDA"
-                st.write(
-                    f"{i}. **{act['nombre']}** ({act['tipo']}): {estado} | Diferencia: S/ {diff:,.2f}"
-                )
-
-
-# ---------------------------------------------------------
-# EJERCICIO 3 – Funciones y Programación Funcional
-# ---------------------------------------------------------
-def render_ejercicio_3() -> None:
-    title_card("📊 Ejercicio 3 – Funciones y Programación Funcional")
-    st.caption("Cálculo de retorno esperado usando función + map/lambda")
-
-    if "e3_actividades" not in st.session_state:
-        st.session_state["e3_actividades"] = []
-
-    def calcular_retorno(actividad: dict, tasa: float, meses: int) -> float:
-        return float(actividad["presupuesto"]) * float(tasa) * int(meses)
-
-    top_a, top_b = st.columns([1, 1.2])
-
-    with top_a:
-        st.markdown("**1) Define actividades (para este ejercicio)**")
-        e3_nombre = st.text_input("Nombre de la actividad", key="e3_nombre")
-        e3_presupuesto = st.number_input(
-            "Presupuesto (S/)",
+    with col_a:
+        mes = st.selectbox("Mes", meses, index=mes_index, key="e1_mes_select")
+        presupuesto = st.number_input(
+            "Presupuesto (S/.)",
             min_value=0.0,
-            value=1000.0,
-            step=50.0,
-            key="e3_presupuesto"
+            value=float(st.session_state["e1_presupuesto"]),
+            step=10.0,
+            key="e1_presupuesto_input",
+        )
+        gasto = st.number_input(
+            "Gasto (S/.)",
+            min_value=0.0,
+            value=float(st.session_state["e1_gasto"]),
+            step=10.0,
+            key="e1_gasto_input",
         )
 
-        add_e3 = st.button("Agregar", key="e3_add")
-        clear_e3 = st.button("Limpiar", key="e3_clear")
+    with col_b:
+        st.markdown("**Acciones**")
+        evaluar = st.button("Evaluar", type="primary", use_container_width=True, key="e1_btn_eval")
+        limpiar = st.button("Limpiar", type="secondary", use_container_width=True, key="e1_btn_clear")
 
-        if add_e3:
-            if not e3_nombre.strip():
-                st.warning("Ingrese un **nombre**.")
+        st.markdown("---")
+        st.markdown("**Salida / Resultado**")
+
+        if limpiar:
+            st.session_state["e1_mes"] = "Enero"
+            st.session_state["e1_presupuesto"] = 500.0
+            st.session_state["e1_gasto"] = 150.0
+            st.rerun()
+
+        if evaluar:
+            # Persistir
+            st.session_state["e1_mes"] = mes
+            st.session_state["e1_presupuesto"] = float(presupuesto)
+            st.session_state["e1_gasto"] = float(gasto)
+
+            diferencia = float(presupuesto - gasto)
+
+            if gasto <= presupuesto:
+                st.success("✅ El gasto está dentro del presupuesto.")
             else:
-                st.session_state["e3_actividades"].append({
-                    "nombre": e3_nombre.strip(),
-                    "presupuesto": float(e3_presupuesto)
-                })
-                st.success("Actividad agregada.")
+                st.warning("⚠️ El gasto excede el presupuesto.")
 
-        if clear_e3:
-            st.session_state["e3_actividades"] = []
-            st.info("Lista limpiada.")
+            st.write(f"**Diferencia (Presupuesto - Gasto):** S/ {diferencia:,.2f}")
 
-    with top_b:
-        st.markdown("**2) Parámetros del retorno**")
-        e3_tasa = st.slider(
-            "Tasa (por mes)",
-            min_value=0.0,
-            max_value=1.0,
-            value=0.05,
-            step=0.01,
-            key="e3_tasa"
-        )
-        e3_meses = st.number_input("Meses", min_value=1, value=6, step=1, key="e3_meses")
-        calc_e3 = st.button("Calcular retorno", key="e3_calc")
+    with st.expander("📌 Resumen"):
+        st.write(f"**Mes:** {mes}")
+        st.write(f"**Presupuesto:** S/ {presupuesto:,.2f}")
+        st.write(f"**Gasto:** S/ {gasto:,.2f}")
+        st.write(f"**Diferencia:** S/ {(presupuesto - gasto):,.2f}")
+    card_close()
 
-    st.write("")
 
-    with st.container(border=True):
-        st.markdown("**Resultados**")
+# -----------------------------------------------------------------------------
+# Ejercicio 2 – Listas y Diccionarios
+# -----------------------------------------------------------------------------
+def render_ejercicio_2() -> None:
+    page_header("📝 Ejercicio 2", "Registro de actividades financieras")
 
-        actividades = st.session_state["e3_actividades"]
-        if not actividades:
-            st.info("Agregue al menos una actividad para calcular retornos.")
-            return
+    card_open("Registro de Actividades Financieras")
+    with st.form("e2_form", clear_on_submit=True):
+        col1, col2 = st.columns(2)
+        with col1:
+            nombre = st.text_input("Nombre de la actividad", value="")
+            tipo = st.selectbox(
+                "Tipo",
+                ["Ingreso", "Gasto", "Ahorro", "Inversión", "Vivienda", "Alimentación", "Transporte"],
+            )
+            presupuesto = st.number_input("Presupuesto (S/.)", min_value=0.0, value=0.0, step=50.0)
+        with col2:
+            gasto_real = st.number_input("Gasto real (S/.)", min_value=0.0, value=0.0, step=50.0)
 
-        if calc_e3:
-            retornos = list(map(lambda a: calcular_retorno(a, e3_tasa, e3_meses), actividades))
-            df = pd.DataFrame({
-                "nombre": [a["nombre"] for a in actividades],
-                "presupuesto": [a["presupuesto"] for a in actividades],
-                "tasa": [e3_tasa] * len(actividades),
-                "meses": [e3_meses] * len(actividades),
-                "retorno_esperado": retornos,
-            })
-            st.dataframe(df, use_container_width=True, hide_index=True)
-            st.write(f"Retorno total esperado: **S/ {sum(retornos):,.2f}**")
+        colb1, colb2 = st.columns([1, 1])
+        with colb1:
+            guardar = st.form_submit_button("Agregar actividad", type="primary", use_container_width=True)
+        with colb2:
+            limpiar = st.form_submit_button("Limpiar actividades", type="secondary", use_container_width=True)
+
+    if limpiar:
+        st.session_state["e2_actividades"] = []
+        st.success("Lista de actividades limpiada.")
+        st.rerun()
+
+    if guardar:
+        if not nombre.strip():
+            st.warning("Ingrese el nombre de la actividad.")
         else:
-            st.info("Defina actividades y presione **Calcular retorno**")
+            st.session_state["e2_actividades"].append(
+                {
+                    "nombre": nombre.strip(),
+                    "tipo": tipo,
+                    "presupuesto": float(presupuesto),
+                    "gasto_real": float(gasto_real),
+                }
+            )
+            st.success(f"Actividad '{nombre.strip()}' registrada.")
+            st.rerun()
 
-# -------------------------------------------------
-# EJERCICIO 4 – Programación Orientada a Objetos
-# -------------------------------------------------
+    card_close()
+
+    # Visualización y evaluación (bucle + condicional)
+    actividades: List[Dict] = st.session_state["e2_actividades"]
+    if not actividades:
+        st.info("ℹ️ No hay actividades registradas. Agregue una actividad con el formulario superior.")
+        return
+
+    df = pd.DataFrame(actividades)
+    df["diferencia"] = df["presupuesto"] - df["gasto_real"]
+    df["estado"] = np.where(df["gasto_real"] <= df["presupuesto"], "✅ Cumple", "⚠️ Excede")
+
+    st.subheader("📋 Actividades registradas")
+    st.dataframe(
+        df[["nombre", "tipo", "presupuesto", "gasto_real", "diferencia", "estado"]].style.format(
+            {"presupuesto": "S/ {:,.2f}", "gasto_real": "S/ {:,.2f}", "diferencia": "S/ {:,.2f}"}
+        ),
+        use_container_width=True,
+        hide_index=True,
+    )
+
+    st.subheader("🔎 Evaluación por actividad")
+    for i, act in enumerate(actividades, start=1):
+        nombre = act["nombre"]
+        tipo = act["tipo"]
+        presupuesto = act["presupuesto"]
+        gasto_real = act["gasto_real"]
+        diferencia = presupuesto - gasto_real
+
+        with st.container():
+            card_open(f"Actividad {i}: {nombre}")
+            c1, c2, c3 = st.columns([1.2, 1, 1.2])
+            with c1:
+                st.write(f"**Tipo:** {tipo}")
+                st.write(f"**Presupuesto:** S/ {presupuesto:,.2f}")
+                st.write(f"**Gasto real:** S/ {gasto_real:,.2f}")
+            with c2:
+                if gasto_real <= presupuesto:
+                    st.success("✅ Cumple")
+                else:
+                    st.warning("⚠️ Excede")
+            with c3:
+                st.write(f"**Diferencia:** S/ {diferencia:,.2f}")
+                if presupuesto > 0:
+                    st.write(f"**% usado:** {(gasto_real / presupuesto) * 100:,.1f}%")
+                else:
+                    st.write("**% usado:** N/A (presupuesto = 0)")
+            card_close()
+
+    with st.expander("📊 Resumen general"):
+        total_presupuesto = float(df["presupuesto"].sum())
+        total_gasto = float(df["gasto_real"].sum())
+        total_diff = total_presupuesto - total_gasto
+        cumplen = int((df["gasto_real"] <= df["presupuesto"]).sum())
+        total = int(len(df))
+
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Presupuesto total", f"S/ {total_presupuesto:,.2f}")
+        c2.metric("Gasto total", f"S/ {total_gasto:,.2f}")
+        c3.metric("Diferencia", f"S/ {total_diff:,.2f}")
+        c4.metric("Cumplen", f"{cumplen}/{total}")
+
+    if st.button("🗑️ Limpiar todas las actividades", type="secondary", key="e2_btn_clear_all"):
+        st.session_state["e2_actividades"] = []
+        st.rerun()
+
+
+# -----------------------------------------------------------------------------
+# Ejercicio 3 – Funciones y Programación Funcional
+# -----------------------------------------------------------------------------
+def render_ejercicio_3() -> None:
+    page_header(
+        "📝 Ejercicio 3",
+        "Funciones y Programación Funcional – Retorno esperado (map + lambda)",
+    )
+
+    @dataclass
+    class ActividadRetorno:
+        nombre: str
+        presupuesto: float
+
+    def calcular_retorno(presupuesto: float, tasa: float, meses: int) -> float:
+        """Retorno = presupuesto × tasa × meses"""
+        return float(presupuesto) * float(tasa) * int(meses)
+
+    card_open("📈 Registro de actividades para retorno esperado")
+    with st.form("e3_form", clear_on_submit=True):
+        col1, col2 = st.columns([1.2, 1])
+        with col1:
+            nombre = st.text_input("Nombre de la actividad", value="")
+            presupuesto = st.number_input("Presupuesto (S/.)", min_value=0.0, value=0.0, step=100.0)
+        with col2:
+            tasa = st.slider("Tasa (0% – 100%)", min_value=0.0, max_value=100.0, value=5.0, step=0.5) / 100.0
+            meses = st.number_input("Meses", min_value=1, max_value=60, value=12, step=1)
+
+        colb1, colb2, colb3 = st.columns([1, 1, 1])
+        with colb1:
+            agregar = st.form_submit_button("Agregar", type="primary", use_container_width=True)
+        with colb2:
+            calcular = st.form_submit_button("Calcular retornos", type="secondary", use_container_width=True)
+        with colb3:
+            limpiar = st.form_submit_button("Limpiar", type="secondary", use_container_width=True)
+
+    if limpiar:
+        st.session_state["e3_actividades"] = []
+        st.success("Lista de actividades del Ejercicio 3 limpiada.")
+        st.rerun()
+
+    if agregar:
+        if not nombre.strip():
+            st.warning("Ingrese el nombre de la actividad.")
+        else:
+            st.session_state["e3_actividades"].append(
+                {"nombre": nombre.strip(), "presupuesto": float(presupuesto)}
+            )
+            st.success(f"Actividad '{nombre.strip()}' agregada.")
+            st.rerun()
+
+    actividades: List[Dict] = st.session_state["e3_actividades"]
+    if actividades:
+        df = pd.DataFrame(actividades)
+        st.dataframe(df, use_container_width=True, hide_index=True)
+
+    card_close()
+
+    if not actividades:
+        st.info("ℹ️ Agregue al menos una actividad para realizar el cálculo.")
+        return
+
+    if calcular:
+        # Programación funcional: map + lambda
+        resultados = list(
+            map(
+                lambda a: {
+                    "nombre": a["nombre"],
+                    "presupuesto": a["presupuesto"],
+                    "retorno": calcular_retorno(a["presupuesto"], tasa, int(meses)),
+                },
+                actividades,
+            )
+        )
+        df_r = pd.DataFrame(resultados)
+        st.subheader("📌 Resultados")
+        st.dataframe(
+            df_r.style.format({"presupuesto": "S/ {:,.2f}", "retorno": "S/ {:,.2f}"}),
+            use_container_width=True,
+            hide_index=True,
+        )
+
+        total_inv = float(df_r["presupuesto"].sum())
+        total_ret = float(df_r["retorno"].sum())
+        ganancia = total_ret - total_inv
+
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Total invertido", f"S/ {total_inv:,.2f}")
+        c2.metric("Retorno total", f"S/ {total_ret:,.2f}")
+        c3.metric("Ganancia", f"S/ {ganancia:,.2f}")
+
+
+# -----------------------------------------------------------------------------
+# Ejercicio 4 – Programación Orientada a Objetos (POO)
+# -----------------------------------------------------------------------------
 class Actividad:
     def __init__(self, nombre: str, tipo: str, presupuesto: float, gasto_real: float) -> None:
         self.nombre = nombre
@@ -351,96 +511,118 @@ class Actividad:
         return self.gasto_real <= self.presupuesto
 
     def mostrar_info(self) -> str:
-        diff = self.presupuesto - self.gasto_real
-        estado = "En presupuesto" if self.esta_en_presupuesto() else "EXCEDIDA"
+        diferencia = self.presupuesto - self.gasto_real
+        estado = "✅ En presupuesto" if self.esta_en_presupuesto() else "⚠️ Fuera de presupuesto"
         return (
-            f"Actividad: {self.nombre} | Tipo: {self.tipo} | "
-            f"Presupuesto: S/ {self.presupuesto:,.2f} | "
-            f"Gasto real: S/ {self.gasto_real:,.2f} | "
-            f"Estado: {estado} | Diferencia: S/ {diff:,.2f}"
+            f"**{self.nombre}**  \n"
+            f"- Tipo: {self.tipo}  \n"
+            f"- Presupuesto: S/ {self.presupuesto:,.2f}  \n"
+            f"- Gasto real: S/ {self.gasto_real:,.2f}  \n"
+            f"- Diferencia: S/ {diferencia:,.2f}  \n"
+            f"- Estado: {estado}"
         )
 
 
 def render_ejercicio_4() -> None:
-    title_card("📊 Ejercicio 4 – Programación Orientada a Objetos (POO)")
-    st.caption("Modelado de actividad financiera con clase y métodos")
+    page_header(
+        "📝 Ejercicio 4",
+        "Programación Orientada a Objetos (POO)",
+    )
 
-    if "e4_objetos" not in st.session_state:
+    card_open("Registro de actividades como objetos (POO)")
+    with st.form("e4_form", clear_on_submit=True):
+        nombre = st.text_input("Nombre", value="")
+        tipo = st.selectbox(
+            "Tipo",
+            ["Ingreso", "Gasto", "Ahorro", "Inversión", "Vivienda", "Alimentación", "Transporte"],
+        )
+        c1, c2 = st.columns(2)
+        presupuesto = c1.number_input("Presupuesto (S/.)", min_value=0.0, value=0.0, step=50.0)
+        gasto_real = c2.number_input("Gasto real (S/.)", min_value=0.0, value=0.0, step=50.0)
+
+        colb1, colb2, colb3 = st.columns([1, 1, 1])
+        with colb1:
+            crear = st.form_submit_button("Crear objeto", type="primary", use_container_width=True)
+        with colb2:
+            limpiar = st.form_submit_button("Limpiar lista", type="secondary", use_container_width=True)
+        with colb3:
+            pass
+
+    if limpiar:
         st.session_state["e4_objetos"] = []
+        st.success("Lista de objetos limpiada.")
+        st.rerun()
 
-    left, right = st.columns([1, 1.35])
+    if crear:
+        if not nombre.strip():
+            st.warning("Ingrese el nombre de la actividad.")
+        else:
+            st.session_state["e4_objetos"].append(
+                Actividad(nombre.strip(), tipo, float(presupuesto), float(gasto_real))
+            )
+            st.success(f"Objeto Actividad '{nombre.strip()}' creado.")
+            st.rerun()
 
-    with left:
-        with st.container(border=True):
-            e4_nombre = st.text_input("Nombre", key="e4_nombre")
-            e4_tipo = st.selectbox("Tipo", ["Ingreso", "Gasto", "Inversión", "Ahorro"], index=0, key="e4_tipo")
-            e4_presupuesto = st.number_input("Presupuesto (S/)", min_value=0.0, value=1200.0, step=50.0, key="e4_presupuesto")
-            e4_gasto_real = st.number_input("Gasto real (S/)", min_value=0.0, value=0.0, step=50.0, key="e4_gasto_real")
+    card_close()
 
-            add_e4 = st.button("Crear objeto Actividad", key="e4_add")
-            clear_e4 = st.button("Limpiar", key="e4_clear")
+    objetos: List[Actividad] = st.session_state["e4_objetos"]
+    if not objetos:
+        st.info("ℹ️ Cree al menos un objeto Actividad para visualizar el resumen.")
+        return
 
-            if add_e4:
-                if not e4_nombre.strip():
-                    st.warning("Ingrese un **nombre**.")
-                else:
-                    obj = Actividad(e4_nombre.strip(), e4_tipo, e4_presupuesto, e4_gasto_real)
-                    st.session_state["e4_objetos"].append(obj)
-                    st.success("Objeto creado y registrado.")
+    st.subheader("📋 Resumen de objetos")
+    for i, obj in enumerate(objetos):
+        col_a, col_b, col_c = st.columns([3.5, 1.2, 0.4])
 
-            if clear_e4:
-                st.session_state["e4_objetos"] = []
-                st.info("Lista de objetos limpiada.")
+        with col_a:
+            card_open(f"Objeto {i + 1}")
+            st.write(obj.mostrar_info())
+            card_close()
 
-    with right:
-        with st.container(border=True):
-            st.markdown("**Objetos creados**")
+        with col_b:
+            if obj.esta_en_presupuesto():
+                st.success("✅ En presupuesto")
+            else:
+                exceso = obj.gasto_real - obj.presupuesto
+                st.warning(f"⚠️ Exceso: S/ {exceso:,.2f}")
 
-            objs = st.session_state["e4_objetos"]
-            if not objs:
-                st.info("Aún no hay objetos creados.")
-                return
-
-            for i, obj in enumerate(objs, start=1):
-                st.write(f"**{i}.** {obj.mostrar_info()}")
-                if obj.esta_en_presupuesto():
-                    st.success("✅ Cumple el presupuesto")
-                else:
-                    st.warning("⚠️ No cumple el presupuesto")
-                st.write("---")
+        with col_c:
+            if st.button("❌", key=f"e4_del_{i}"):
+                st.session_state["e4_objetos"].pop(i)
+                st.rerun()
 
 
-# -------------
-# Menú lateral
-# -------------
+# -----------------------------------------------------------------------------
+# Main
+# -----------------------------------------------------------------------------
 def main() -> None:
-    apply_custom_css()
+    apply_theme()
+    ensure_state()
 
-    # Logo seguro (no rompe si no existe)
+   
+    st.sidebar.markdown("## Navegación")
     try:
         st.sidebar.image("logo.png", use_container_width=True)
     except Exception:
-        st.sidebar.markdown("### DMC INSTITUTE")
+        # Evitar fallos si no existe el archivo en el despliegue
+        st.sidebar.caption("logo.png no encontrado (opcional).")
 
-    st.sidebar.markdown("## Navegación")
-    st.sidebar.caption("Selecciona una página")
-
-    page = st.sidebar.selectbox(
-        "Menú",
-        ["Home", "Ejercicio 1", "Ejercicio 2", "Ejercicio 3", "Ejercicio 4"],
-        key="page_select",
-        label_visibility="collapsed",
+    pagina = st.sidebar.selectbox(
+        "Selecciona una página",
+        ["🏠 Home", "📝 Ejercicio 1", "📝 Ejercicio 2", "📝 Ejercicio 3", "📝 Ejercicio 4"],
     )
+    st.sidebar.divider()
+    st.sidebar.caption("Autor: Jeancarlos Amaya Quispe")
 
-    if page == "Home":
+    if pagina == "🏠 Home":
         render_home()
-    elif page == "Ejercicio 1":
+    elif pagina == "📝 Ejercicio 1":
         render_ejercicio_1()
-    elif page == "Ejercicio 2":
+    elif pagina == "📝 Ejercicio 2":
         render_ejercicio_2()
-    elif page == "Ejercicio 3":
+    elif pagina == "📝 Ejercicio 3":
         render_ejercicio_3()
-    elif page == "Ejercicio 4":
+    elif pagina == "📝 Ejercicio 4":
         render_ejercicio_4()
 
 
