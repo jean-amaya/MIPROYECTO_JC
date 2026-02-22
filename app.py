@@ -91,6 +91,16 @@ def apply_custom_css() -> None:
             margin: 0;
             font-weight: 800;
         }
+
+        /* Estilo tipo dmc-card para contenedores con borde (evita error removeChild) */
+        div[data-testid="stVerticalBlockBorderWrapper"]{
+            background: #F5F7FB;
+            border: 1px solid #DDE6F5 !important;
+            border-radius: 16px !important;
+            padding: 16px 18px !important;
+            box-shadow: 0 8px 20px rgba(23, 29, 42, 0.06) !important;
+        }
+
     </style>
     """
     st.markdown(css, unsafe_allow_html=True)
